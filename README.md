@@ -24,6 +24,11 @@ github.saturndex.org ── GitHub Pages on Saturn-DEX/assets main ── token 
 - **OAuth** uses a GitHub OAuth App; the code→token exchange runs in a
   Cloudflare Worker so the client secret never reaches the browser.
 
+## Deployment
+
+See [DEPLOY.md](DEPLOY.md) for the step-by-step Cloudflare deployment guide
+(Worker + Pages via wrangler CLI, custom domains, verification).
+
 ## Setup
 
 ### 1. GitHub OAuth App
@@ -54,8 +59,10 @@ exchangeUrl: 'https://oauth-exchange.saturndex.org/exchange',
 
 1. Connect this repo (main branch), build command: none, output dir: `/`.
 2. Custom domain: `listing.saturndex.org`.
-3. Push to main → auto-deploys.
-
+3. Manual deploy via Wrangler pages deploy:
+```sh
+wrangler pages deploy public --project-name listing-app --branch main
+```
 ### 5. Prerequisites in the assets repo
 
 - GitHub Pages enabled on `Saturn-DEX/assets` `main` with custom domain
@@ -67,7 +74,7 @@ exchangeUrl: 'https://oauth-exchange.saturndex.org/exchange',
 
 ## Development
 
-No build step. Serve statically (`npx serve .`) and open the page.
+No build step. Serve statically from `public/` (`npx serve public`) and open the page.
 
 ## Notes
 

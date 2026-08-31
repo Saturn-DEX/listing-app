@@ -1,0 +1,23 @@
+# Cloudflare Worker — GitHub OAuth code → token exchange
+# Deploy with: wrangler deploy
+# Secrets (set interactively, never committed):
+#   wrangler secret put GITHUB_CLIENT_SECRET
+name = "oauth-exchange"
+main = "worker/exchange.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Public OAuth App client id (safe to commit — it is not a secret).
+# Register at https://github.com/settings/developers (callback = https://listing.saturndex.org)
+GITHUB_CLIENT_ID = "Ov23liyKsXXEb5gDGgxC"
+# CORS allow-list for the exchange endpoint. Must be the exact origin the
+# listing page runs on (https://listing.saturndex.org in production; use the
+# *.pages.dev preview URL while testing before the custom domain is live).
+ALLOWED_ORIGIN = "https://listing.saturndex.org"
+
+# Bind to the custom domain only when the saturndex.org zone is in this
+# Cloudflare account. Otherwise deploy to the *.workers.dev subdomain and add
+# the custom domain in the dashboard (Workers > oauth-exchange > Domains & Routes).
+# routes = [
+#   { pattern = "oauth-exchange.saturndex.org/*", zone_name = "saturndex.org" }
+# ]
