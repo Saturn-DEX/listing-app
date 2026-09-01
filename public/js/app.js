@@ -14,12 +14,15 @@ const GITHUB_CONFIG = {
 };
 
 // State
+const PAGE_SIZE = 100; // tokens per browse page
 let allTokens = [];
 let currentTab = "browse";
 let currentToken = null;
 let accessToken = null;
 let logoBase64 = null;
 let isEditing = false; // true while the form is prefilled for editing an existing token
+let currentViewTokens = []; // last rendered (filtered) token list
+let currentPage = 1;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -196,6 +199,28 @@ async function fetchTokenInfo(chain, address) {
 // ---------- Render ----------
 
 function renderTokens(tokens) {
+    currentViewTokens = tokens;
+    currentPage = 1;
+    renderBrowse();
+}
+
+function renderBrowse() {
+    const totalPages = Math.max(
+        1,
+        Math.ceil(currentViewTokens.length / PAGE_SIZE),
+    );
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageTokens = currentViewTokens.slice(start, start + PAGE_SIZE);
+
+    document.getElementById("tokenCount").textContent =
+        `Found ${currentViewTokens.length} tokens`;
+    renderGrid(pageTokens);
+    renderPagination(currentViewTokens.length, currentPage);
+}
+
+function renderGrid(tokens) {
     const grid = document.getElementById("tokenGrid");
     grid.innerHTML = "";
 
@@ -209,6 +234,71 @@ function renderTokens(tokens) {
         const card = createTokenCard(token);
         grid.appendChild(card);
     });
+}
+
+function renderPagination(total, page) {
+    const container = document.getElementById("pagination");
+    container.innerHTML = "";
+
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (totalPages <= 1) return;
+
+    const goTo = (target) => () => goToPage(target);
+
+    // Previous button
+    const prev = document.createElement("button");
+    prev.textContent = "\u00ab";
+    prev.disabled = page === 1;
+    prev.className = pageBtnClass(page === 1);
+    if (page > 1) prev.onclick = goTo(page - 1);
+    container.appendChild(prev);
+
+    // Page numbers: always show first/last/current, plus a window around current
+    const pages = new Set([1, totalPages, page]);
+    for (let i = page - 2; i <= page + 2; i++) {
+        if (i >= 1 && i <= totalPages) pages.add(i);
+    }
+
+    let last = 0;
+    for (const p of [...pages].sort((a, b) => a - b)) {
+        if (p - last > 1) {
+            const dots = document.createElement("span");
+            dots.textContent = "...";
+            dots.className = "px-1 text-gray-400 select-none";
+            container.appendChild(dots);
+        }
+        const btn = document.createElement("button");
+        btn.textContent = p;
+        btn.disabled = p === page;
+        btn.className = pageBtnClass(p === page);
+        if (p !== page) btn.onclick = goTo(p);
+        container.appendChild(btn);
+        last = p;
+    }
+
+    // Next button
+    const next = document.createElement("button");
+    next.textContent = "\u00bb";
+    next.disabled = page === totalPages;
+    next.className = pageBtnClass(page === totalPages);
+    if (page < totalPages) next.onclick = goTo(page + 1);
+    container.appendChild(next);
+}
+
+function pageBtnClass(active) {
+    return active
+        ? "w-8 h-8 rounded-lg text-sm font-medium bg-blue-600 text-white cursor-default"
+        : "w-8 h-8 rounded-lg text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed";
+}
+
+function goToPage(page) {
+    const totalPages = Math.max(
+        1,
+        Math.ceil(currentViewTokens.length / PAGE_SIZE),
+    );
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    currentPage = page;
+    renderBrowse();
 }
 
 function createTokenCard(token) {
@@ -706,7 +796,18 @@ function submitToken(event) {
 // ---------- GitHub PR Creation ----------
 
 async function createPullRequest(chain, address, tokenName, files) {
-    // Step 1: Fork the repository (POST /forks returns the existing fork if already forked)
+    // Upstream default branch (the PR base) — fetched dynamically, never hardcoded.
+    const upstreamResponse = await githubFetch(
+        `/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`,
+    );
+    const upstreamDefaultBranch = upstreamResponse.ok
+        ? (await upstreamResponse.json()).default_branch || "main"
+        : "main";
+
+    // Step 1: Fork the repository. POST /forks returns:
+    //   - the new fork (202) — the normal external-contributor path;
+    //   - the submitter's EXISTING personal fork (200) if they already have one;
+    //   - the base repository itself (200) when the caller owns/has push access.
     const forkResponse = await githubFetch(
         `/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/forks`,
         {
@@ -715,28 +816,35 @@ async function createPullRequest(chain, address, tokenName, files) {
     );
 
     if (!forkResponse.ok) {
-        throw new Error("Failed to fork repository");
+        const err = await forkResponse.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to fork repository");
     }
 
     const fork = await forkResponse.json();
-    const forkOwner = fork.owner.login;
+    const ref = await resolveForkReference(fork, upstreamDefaultBranch);
+    if (!ref.owner || !ref.repo || !ref.defaultBranch) {
+        throw new Error("Could not determine the fork repository");
+    }
 
-    // Step 2: Wait for the fork to be ready (poll for its default branch ref)
-    const baseBranch = "main";
-    await waitForForkReady(forkOwner);
+    // Step 2: Wait for the working repo to expose its default-branch ref.
+    // Forks clone asynchronously on GitHub; owners skip this (no clone involved —
+    // when the caller owns the base repo, the response IS the base repo).
+    if (!ref.isBaseRepo) {
+        await waitForForkReady(ref.owner, ref.repo, ref.defaultBranch);
+    }
 
     // Step 3: Create a new branch (422 = branch already exists, which is fine on resubmission)
     const branchName = `token/${chain}/${address}`;
     let branchCreated = false;
 
     const branchRefResponse = await githubFetch(
-        `/repos/${forkOwner}/${GITHUB_CONFIG.repo}/git/ref/heads/${baseBranch}`,
+        `/repos/${ref.owner}/${ref.repo}/git/ref/heads/${ref.defaultBranch}`,
     );
     if (branchRefResponse.ok) {
         const branchData = await branchRefResponse.json();
 
         const createRefResponse = await githubFetch(
-            `/repos/${forkOwner}/${GITHUB_CONFIG.repo}/git/refs`,
+            `/repos/${ref.owner}/${ref.repo}/git/refs`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -757,9 +865,14 @@ async function createPullRequest(chain, address, tokenName, files) {
 
     // Step 4: Create/update files (sha-aware so edits to existing tokens work)
     for (const file of files) {
-        const existingSha = await getFileSha(forkOwner, file.path, branchName);
+        const existingSha = await getFileSha(
+            ref.owner,
+            ref.repo,
+            file.path,
+            branchName,
+        );
         const putResponse = await githubFetch(
-            `/repos/${forkOwner}/${GITHUB_CONFIG.repo}/contents/${file.path}`,
+            `/repos/${ref.owner}/${ref.repo}/contents/${file.path}`,
             {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -800,8 +913,8 @@ async function createPullRequest(chain, address, tokenName, files) {
                     "\n\nThis PR was created via the SaturnDEX Assets Listing page (" +
                     window.location.origin +
                     ").",
-                head: `${forkOwner}:${branchName}`,
-                base: baseBranch,
+                head: `${ref.owner}:${branchName}`,
+                base: upstreamDefaultBranch,
             }),
         },
     );
@@ -819,21 +932,87 @@ async function createPullRequest(chain, address, tokenName, files) {
     return prData.html_url;
 }
 
-async function waitForForkReady(forkOwner, maxAttempts = 15) {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const response = await githubFetch(
-            `/repos/${forkOwner}/${GITHUB_CONFIG.repo}/git/ref/heads/main`,
-        );
-        if (response.ok) return;
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+// Resolve the REAL identity of the repository the fork response points at.
+// GitHub never guarantees the fork keeps the original repo name (it appends
+// -1/-2 when the name is already taken) and returns the submitter's existing
+// fork or even the base repo itself for owners, so the fork's path must come
+// from the response (full_name), never reconstructed as owner + config repo.
+async function resolveForkReference(fork, fallbackDefaultBranch) {
+    const fullName = fork && fork.full_name;
+    let owner = fullName ? fullName.split("/")[0] : null;
+    let repo = fullName ? fullName.split("/")[1] : null;
+    let defaultBranch =
+        (fork && fork.default_branch) || fallbackDefaultBranch || null;
+
+    // Defensive fallback: if the response lacked identity fields, resolve them
+    // from the repo resource.
+    if ((!owner || !repo || !fork.default_branch) && owner && repo) {
+        const probe = await githubFetch(`/repos/${owner}/${repo}`);
+        if (probe.ok) {
+            const data = await probe.json();
+            owner = (data.owner && data.owner.login) || owner;
+            repo = data.name || repo;
+            defaultBranch = data.default_branch || defaultBranch;
+        }
     }
-    throw new Error("Fork is taking too long to be ready. Please try again.");
+
+    const effectiveFullName = owner && repo ? `${owner}/${repo}` : null;
+    return {
+        owner,
+        repo,
+        defaultBranch,
+        isBaseRepo:
+            effectiveFullName ===
+            `${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}`,
+    };
 }
 
-async function getFileSha(forkOwner, path, branch) {
+async function waitForForkReady(
+    forkOwner,
+    forkRepo,
+    defaultBranch,
+    maxAttempts = 14,
+) {
+    // Fork creation is asynchronous on GitHub: the repo appears immediately but
+    // its git refs can take seconds (sometimes minutes, per GitHub docs) to
+    // materialize. Poll with backoff and distinguish "still cloning" (repo
+    // resource exists, ref not yet) from "repo truly gone" (repo resource 404).
+    let delay = 1000;
+    let missingRepoCount = 0;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const refResponse = await githubFetch(
+            `/repos/${forkOwner}/${forkRepo}/git/ref/heads/${defaultBranch}`,
+        );
+        if (refResponse.ok) return;
+
+        const repoResponse = await githubFetch(
+            `/repos/${forkOwner}/${forkRepo}`,
+        );
+        if (repoResponse.ok) {
+            missingRepoCount = 0;
+        } else if (repoResponse.status === 404) {
+            missingRepoCount++;
+            if (missingRepoCount >= 5) {
+                throw new Error(
+                    `Could not find fork ${forkOwner}/${forkRepo} — see https://github.com/${forkOwner}/${forkRepo}. It may not have been created yet.`,
+                );
+            }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * 2, 8000);
+    }
+
+    throw new Error(
+        `Your fork https://github.com/${forkOwner}/${forkRepo} is still being created — GitHub clones forks asynchronously and it can take a while. Check the link and try again.`,
+    );
+}
+
+async function getFileSha(forkOwner, forkRepo, path, branch) {
     try {
         const response = await githubFetch(
-            `/repos/${forkOwner}/${GITHUB_CONFIG.repo}/contents/${path}?ref=${encodeURIComponent(branch)}`,
+            `/repos/${forkOwner}/${forkRepo}/contents/${path}?ref=${encodeURIComponent(branch)}`,
         );
         if (!response.ok) return null;
         const data = await response.json();

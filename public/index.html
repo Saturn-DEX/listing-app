@@ -82,7 +82,7 @@
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 py-8">
             <!-- Tabs -->
-            <div class="flex gap-8 border-b mb-8">
+            <div class="flex justify-center gap-8 border-b mb-8">
                 <button id="tabBrowse" class="pb-3 font-medium tab-active">
                     Browse Tokens
                 </button>
@@ -116,10 +116,13 @@
                     </select>
                 </div>
 
-                <!-- Token Count -->
-                <p id="tokenCount" class="text-gray-500 mb-4">
-                    Loading tokens...
-                </p>
+                <!-- Token Count + Pagination -->
+                <div class="flex items-center justify-between mb-4">
+                    <p id="tokenCount" class="text-gray-500">
+                        Loading tokens...
+                    </p>
+                    <div id="pagination" class="flex items-center gap-1"></div>
+                </div>
 
                 <!-- Token Grid -->
                 <div
@@ -137,8 +140,10 @@
 
             <!-- Submit Tab -->
             <div id="submitTab" class="hidden">
-                <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-                    <h2 class="text-xl font-bold mb-6">List Your Token</h2>
+                <div class="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
+                    <h2 class="text-xl font-bold mb-6 text-center">
+                        List Your Token
+                    </h2>
                     <form id="tokenForm">
                         <!-- Chain Selection -->
                         <div class="mb-4">
