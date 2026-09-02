@@ -420,6 +420,73 @@ function validateAddress(input) {
     return true;
 }
 
+// --- Aligned helpers (mirror ../assets/.github/scripts/validate-assets.js) ---
+function isValidLowerAddress(address) {
+    return /^0x[0-9a-f]{40}$/.test(address);
+}
+
+function validateRequiredTrimmed(rawValue, label, inputId) {
+    const trimmed = (rawValue || "").trim();
+    if (trimmed.length === 0) {
+        const msg = `${label} is required and must not be empty.`;
+        showToast(msg);
+        if (inputId) {
+            const el = document.getElementById(inputId);
+            if (el) el.focus();
+        }
+        return { ok: false, error: msg };
+    }
+    return { ok: true, value: trimmed };
+}
+
+function validateDecimals(rawValue) {
+    const trimmed = (rawValue || "").trim();
+    if (trimmed.length === 0) {
+        const msg = "Decimals is required.";
+        showToast(msg);
+        document.getElementById("formDecimals").focus();
+        return { ok: false, error: msg };
+    }
+    const num = Number(trimmed);
+    if (
+        !Number.isFinite(num) ||
+        !Number.isInteger(num) ||
+        num < 0 ||
+        num > 18
+    ) {
+        const msg = `Invalid decimals (must be integer 0..18): ${trimmed}`;
+        showToast(msg);
+        document.getElementById("formDecimals").focus();
+        return { ok: false, error: msg };
+    }
+    return { ok: true, value: num };
+}
+
+function validateUrlField(rawValue, fieldName, inputId) {
+    if (rawValue === undefined || rawValue === null)
+        return { ok: true, value: "" };
+    const raw = String(rawValue);
+    if (raw.trim().length === 0) {
+        // Empty string is treated as "not provided" (assets README: remove the row)
+        return { ok: true, value: "" };
+    }
+    if (raw !== raw.trim()) {
+        const msg = `Invalid URL for ${fieldName} (leading/trailing whitespace): "${raw}"`;
+        showToast(msg);
+        if (inputId) document.getElementById(inputId).focus();
+        return { ok: false, error: msg };
+    }
+    try {
+        new URL(raw.trim());
+    } catch {
+        const msg = `Invalid URL for ${fieldName}: ${raw}`;
+        showToast(msg);
+        if (inputId) document.getElementById(inputId).focus();
+        return { ok: false, error: msg };
+    }
+    return { ok: true, value: raw.trim() };
+}
+
 function previewLogo(input) {
     const file = input.files[0];
     const previewContainer = document.getElementById("logoPreview");
@@ -607,12 +674,48 @@ function submitToken(event) {
         return;
     }
 
-    // Validate address
-    if (!validateAddress(document.getElementById("formAddress"))) {
+    // --- Mandatory + format validation (aligned with assets validate-assets.js) ---
+    const chain = document.getElementById("formChain").value;
+    if (!["ethereum", "classic"].includes(chain)) {
+        showToast("Invalid chain selected.");
         return;
     }
 
-    // Logo is required for fresh listings (the edit flow keeps the existing file)
+    // Address: validate format, then normalize to lowercase for the PR payload
+    if (!validateAddress(document.getElementById("formAddress"))) {
+        return;
+    }
+    const rawAddress = document.getElementById("formAddress").value.trim();
+    const address = rawAddress.toLowerCase();
+    if (!isValidLowerAddress(address)) {
+        showToast(
+            `Invalid address format: ${rawAddress} (must be 0x + 40 hex, lowercase)`,
+        );
+        document.getElementById("formAddress").focus();
+        return;
+    }
+
+    // Name / Symbol: trimmed, non-empty (assets: "must be non-empty")
+    const nameRes = validateRequiredTrimmed(
+        document.getElementById("formName").value,
+        "Name",
+        "formName",
+    );
+    if (!nameRes.ok) return;
+    const symbolRes = validateRequiredTrimmed(
+        document.getElementById("formSymbol").value,
+        "Symbol",
+        "formSymbol",
+    );
+    if (!symbolRes.ok) return;
+
+    // Decimals: integer 0..18
+    const decimalsRes = validateDecimals(
+        document.getElementById("formDecimals").value,
+    );
+    if (!decimalsRes.ok) return;
+
+    // Logo is required for fresh listings (edit keeps existing file)
     if (!logoBase64 && !isEditing) {
         const logoInput = document.getElementById("formLogo");
         const logoErrorEl = document.getElementById("logoError");
@@ -623,44 +726,59 @@ function submitToken(event) {
         return;
     }
 
+    // Optional URL fields: trim check + new URL() validity (mirrors validate-assets.js)
+    const socialFields = [
+        "website",
+        "x",
+        "telegram",
+        "discord",
+        "reddit",
+        "facebook",
+        "coingecko",
+    ];
+    const validatedUrls = {};
+    for (const field of socialFields) {
+        const inputId = `form${field.charAt(0).toUpperCase() + field.slice(1)}`;
+        const raw = document.getElementById(inputId).value;
+        const res = validateUrlField(raw, field, inputId);
+        if (!res.ok) return;
+        if (res.value) validatedUrls[field] = res.value;
+    }
+
+    // Best-effort duplicate pre-check (per-chain, case-insensitive) using already-fetched allTokens
+    if (!isEditing && allTokens && allTokens.length) {
+        const dup = allTokens.find(
+            (t) =>
+                t.chain === chain &&
+                t.address &&
+                t.address.toLowerCase() === address,
+        );
+        if (dup) {
+            showToast(
+                `Token already listed on ${chain}: ${address} — open it to edit instead.`,
+            );
+            return;
+        }
+    }
+
     const submitBtn = document.getElementById("submitBtn");
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<div class="spinner mx-auto"></div>';
 
     (async () => {
         try {
-            const chain = document.getElementById("formChain").value;
-            const address = document
-                .getElementById("formAddress")
-                .value.toLowerCase();
             const tokenData = {
-                name: document.getElementById("formName").value,
+                name: nameRes.value,
                 address: address,
-                symbol: document
-                    .getElementById("formSymbol")
-                    .value.toUpperCase(),
-                decimals: parseInt(
-                    document.getElementById("formDecimals").value,
-                ),
+                symbol: symbolRes.value.toUpperCase(),
+                decimals: decimalsRes.value,
                 logo: `${GITHUB_CONFIG.cdnBase}/${chain}/${address}/logo.png`,
             };
 
-            // Add optional social links
-            const socialFields = [
-                "website",
-                "x",
-                "telegram",
-                "discord",
-                "reddit",
-                "facebook",
-                "coingecko",
-            ];
-            socialFields.forEach((field) => {
-                const value = document.getElementById(
-                    `form${field.charAt(0).toUpperCase() + field.slice(1)}`,
-                ).value;
-                if (value) tokenData[field] = value;
-            });
+            // Add validated optional social links (trimmed, non-empty, valid URLs)
+            for (const [field, value] of Object.entries(validatedUrls)) {
+                tokenData[field] = value;
+            }
 
             // Create or update files
             const files = [
