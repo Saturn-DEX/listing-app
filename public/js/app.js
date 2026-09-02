@@ -85,12 +85,15 @@ function showTab(tab) {
     document
         .getElementById("submitTab")
         .classList.toggle("hidden", tab !== "submit");
-    document
-        .getElementById("tabBrowse")
-        .classList.toggle("tab-active", tab === "browse");
-    document
-        .getElementById("tabSubmit")
-        .classList.toggle("tab-active", tab === "submit");
+    const tabBrowse = document.getElementById("tabBrowse");
+    const tabSubmit = document.getElementById("tabSubmit");
+    tabBrowse.classList.toggle("tab-active", tab === "browse");
+    tabSubmit.classList.toggle("tab-active", tab === "submit");
+    // Keep inactive tabs visually consistent: gray text + hover, active tabs blue (via .tab-active)
+    tabBrowse.classList.toggle("text-gray-500", tab !== "browse");
+    tabBrowse.classList.toggle("hover:text-gray-800", tab !== "browse");
+    tabSubmit.classList.toggle("text-gray-500", tab !== "submit");
+    tabSubmit.classList.toggle("hover:text-gray-800", tab !== "submit");
 }
 
 // ---------- GitHub API helpers ----------
@@ -745,12 +748,12 @@ function updateAuthUI() {
 
     if (accessToken) {
         authText.textContent = "Disconnect";
-        authBtn.classList.remove("bg-gray-800");
+        authBtn.classList.remove("bg-blue-600");
         authBtn.classList.add("bg-green-600");
     } else {
         authText.textContent = "Connect GitHub";
         authBtn.classList.remove("bg-green-600");
-        authBtn.classList.add("bg-gray-800");
+        authBtn.classList.add("bg-blue-600");
     }
 }
 
