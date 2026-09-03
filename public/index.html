@@ -4,94 +4,151 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>SaturnDEX Assets - Token Listing</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
         <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ["Inter", "system-ui", "sans-serif"],
+                            mono: ["JetBrains Mono", "monospace"],
+                        },
+                        colors: {
+                            brand: {
+                                DEFAULT: "#2563eb",
+                                dark: "#1d4ed8",
+                                light: "#dbeafe",
+                            },
+                            ink: "#0e1e3d",
+                        },
+                        borderRadius: { "2xl": "1rem", "3xl": "1.25rem" },
+                        boxShadow: {
+                            soft: "0 4px 24px rgba(14,30,61,0.06)",
+                            card: "0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(14,30,61,0.06)",
+                        },
+                    },
+                },
+            };
+        </script>
         <style>
+            :root {
+                --brand: #2563eb;
+                --ink: #0e1e3d;
+            }
+            * {
+                font-family: Inter, system-ui, sans-serif;
+            }
+            .font-mono {
+                font-family: "JetBrains Mono", monospace !important;
+            }
+            .token-card {
+                transition:
+                    transform 0.2s ease,
+                    box-shadow 0.2s ease;
+            }
             .token-card:hover {
-                transform: translateY(-2px);
+                transform: translateY(-3px);
             }
             .modal {
-                transition: opacity 0.2s ease-in-out;
+                transition:
+                    opacity 0.2s ease,
+                    backdrop-filter 0.2s ease;
             }
             .tab-active {
-                border-bottom: 2px solid #3b82f6 !important;
-                color: #3b82f6 !important;
+                /* !important required: overrides Tailwind text-* utilities for active tab (e.g. text-slate-400) */
+                border-bottom: 2px solid #2563eb !important;
+                color: #2563eb !important; /* uses --brand / brand.DEFAULT #2563eb */
             }
             .logo-preview {
                 width: 80px;
                 height: 80px;
                 object-fit: contain;
             }
-            .spinner {
-                border: 3px solid #f3f3f3;
-                border-top: 3px solid #3b82f6;
-                border-radius: 50%;
-                width: 24px;
-                height: 24px;
-                animation: spin 1s linear infinite;
-            }
-            @keyframes spin {
+            @keyframes shimmer {
                 0% {
-                    transform: rotate(0deg);
+                    background-position: -200% 0;
                 }
                 100% {
-                    transform: rotate(360deg);
+                    background-position: 200% 0;
                 }
             }
-            .social-icon {
-                width: 20px;
-                height: 20px;
+            .skeleton {
+                background: linear-gradient(
+                    90deg,
+                    #f1f5f9 25%,
+                    #e2e8f0 50%,
+                    #f1f5f9 75%
+                );
+                background-size: 200% 100%;
+                animation: shimmer 1.2s infinite;
             }
         </style>
     </head>
-    <body class="bg-gray-50 min-h-screen">
+    <body class="bg-[#f8fafc] min-h-screen antialiased text-slate-800">
         <!-- Header -->
         <header
-            class="shadow-md sticky top-0 z-40"
-            style="background-color: #0e1e3d"
+            class="sticky top-0 z-40 backdrop-blur-xl bg-[rgba(14,30,61,0.92)] border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
         >
             <div
-                class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+                class="max-w-7xl mx-auto px-4 py-3.5 flex justify-between items-center"
             >
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3.5">
                     <img
                         src="https://raw.githubusercontent.com/Saturn-DEX/assets/main/saturn%203232.svg"
                         alt="SaturnDEX"
-                        class="h-8"
+                        class="h-10 w-auto"
                     />
-                    <h1 class="text-xl font-bold text-white">
-                        SaturnDEX - Assets Listing
-                    </h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <button
-                        id="githubConnect"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                    >
-                        <svg
-                            class="w-5 h-5"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
+                    <div>
+                        <h1
+                            class="text-[18px] font-semibold text-white tracking-tight leading-none"
                         >
-                            <path
-                                d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
-                            />
-                        </svg>
-                        <span id="authText">Connect GitHub</span>
-                    </button>
+                            SaturnDEX
+                        </h1>
+                        <p
+                            class="text-[11px] text-white font-medium tracking-widest uppercase"
+                        >
+                            Assets Listing
+                        </p>
+                    </div>
                 </div>
+                <button
+                    id="githubConnect"
+                    class="px-4 py-2 bg-brand text-white rounded-full text-sm font-medium hover:bg-brand-dark shadow-sm transition-colors flex items-center gap-2 ring-1 ring-white/10"
+                >
+                    <svg
+                        class="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                        />
+                    </svg>
+                    <span id="authText">Connect GitHub</span>
+                </button>
             </div>
         </header>
 
-        <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 py-8">
             <!-- Tabs -->
-            <div class="flex justify-center gap-8 border-b mb-8">
-                <button id="tabBrowse" class="pb-3 font-medium tab-active">
+            <div
+                class="flex justify-center gap-8 border-b border-slate-200 mb-8"
+            >
+                <button
+                    id="tabBrowse"
+                    class="pb-3 font-medium text-sm tab-active transition-colors"
+                >
                     Browse Tokens
                 </button>
                 <button
                     id="tabSubmit"
-                    class="pb-3 font-medium text-gray-500 hover:text-gray-800"
+                    class="pb-3 font-medium text-sm text-slate-400 hover:text-slate-600 transition-colors"
                 >
                     Submit New Token
                 </button>
@@ -99,19 +156,28 @@
 
             <!-- Browse Tab -->
             <div id="browseTab">
-                <!-- Search and Filter -->
-                <div class="flex flex-col md:flex-row gap-4 mb-6">
-                    <div class="flex-1">
+                <div class="flex flex-col md:flex-row gap-3 mb-6">
+                    <div class="flex-1 relative">
+                        <svg
+                            class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M20 20l-3.5-3.5" />
+                        </svg>
                         <input
                             type="text"
                             id="searchInput"
                             placeholder="Search by name, symbol, or address..."
-                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition placeholder:text-slate-400"
                         />
                     </div>
                     <select
                         id="chainFilter"
-                        class="px-4 py-3 border rounded-lg"
+                        class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     >
                         <option value="all">All Chains</option>
                         <option value="ethereum">Ethereum</option>
@@ -119,46 +185,68 @@
                     </select>
                 </div>
 
-                <!-- Token Count + Pagination -->
                 <div class="flex items-center justify-between mb-4">
-                    <p id="tokenCount" class="text-gray-500">
+                    <p id="tokenCount" class="text-sm text-slate-500">
                         Loading tokens...
                     </p>
                     <div id="pagination" class="flex items-center gap-1"></div>
                 </div>
 
-                <!-- Token Grid -->
                 <div
                     id="tokenGrid"
-                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                >
-                    <!-- Tokens will be loaded here -->
-                </div>
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+                ></div>
 
-                <!-- Loading Spinner -->
-                <div id="loadingSpinner" class="flex justify-center py-12">
-                    <div class="spinner"></div>
+                <div
+                    id="loadingSpinner"
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-4"
+                >
+                    <div
+                        class="h-28 bg-white rounded-2xl border border-slate-100 p-4"
+                    >
+                        <div class="skeleton h-12 w-12 rounded-full"></div>
+                        <div class="skeleton h-3 w-2/3 rounded mt-4"></div>
+                    </div>
+                    <div
+                        class="h-28 bg-white rounded-2xl border border-slate-100 p-4 hidden md:block"
+                    >
+                        <div class="skeleton h-12 w-12 rounded-full"></div>
+                        <div class="skeleton h-3 w-2/3 rounded mt-4"></div>
+                    </div>
+                    <div
+                        class="h-28 bg-white rounded-2xl border border-slate-100 p-4 hidden lg:block"
+                    >
+                        <div class="skeleton h-12 w-12 rounded-full"></div>
+                        <div class="skeleton h-3 w-2/3 rounded mt-4"></div>
+                    </div>
                 </div>
             </div>
 
             <!-- Submit Tab -->
             <div id="submitTab" class="hidden">
-                <div class="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
-                    <h2 class="text-xl font-bold mb-6 text-center">
+                <div
+                    class="bg-white rounded-2xl shadow-card border border-slate-100 p-6 md:p-8 max-w-2xl mx-auto"
+                >
+                    <h2
+                        class="text-xl font-semibold tracking-tight mb-1 text-center"
+                    >
                         List Your Token
                     </h2>
+                    <p class="text-sm text-slate-500 text-center mb-6">
+                        Submit your token for review. All fields are validated
+                        against the assets registry.
+                    </p>
                     <form id="tokenForm">
-                        <!-- Chain Selection -->
                         <div class="mb-4">
                             <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
+                                class="block text-sm font-medium text-slate-700 mb-1.5"
                                 >Chain
                                 <span class="text-red-500">*</span></label
                             >
                             <select
                                 id="formChain"
                                 required
-                                class="w-full px-4 py-2 border rounded-lg"
+                                class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                             >
                                 <option value="ethereum">Ethereum</option>
                                 <option value="classic">
@@ -166,11 +254,9 @@
                                 </option>
                             </select>
                         </div>
-
-                        <!-- Contract Address -->
                         <div class="mb-4">
                             <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
+                                class="block text-sm font-medium text-slate-700 mb-1.5"
                                 >Contract Address
                                 <span class="text-red-500">*</span></label
                             >
@@ -179,18 +265,16 @@
                                 id="formAddress"
                                 required
                                 placeholder="0x..."
-                                class="w-full px-4 py-2 border rounded-lg font-mono"
+                                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                             />
                             <p
                                 id="addressError"
                                 class="text-red-500 text-sm mt-1 hidden"
                             ></p>
                         </div>
-
-                        <!-- Token Name -->
                         <div class="mb-4">
                             <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
+                                class="block text-sm font-medium text-slate-700 mb-1.5"
                                 >Token Name
                                 <span class="text-red-500">*</span></label
                             >
@@ -199,14 +283,12 @@
                                 id="formName"
                                 required
                                 placeholder="e.g., Saturn Token"
-                                class="w-full px-4 py-2 border rounded-lg"
+                                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                             />
                         </div>
-
-                        <!-- Symbol -->
                         <div class="mb-4">
                             <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
+                                class="block text-sm font-medium text-slate-700 mb-1.5"
                                 >Symbol
                                 <span class="text-red-500">*</span></label
                             >
@@ -215,14 +297,12 @@
                                 id="formSymbol"
                                 required
                                 placeholder="e.g., SATURN"
-                                class="w-full px-4 py-2 border rounded-lg"
+                                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                             />
                         </div>
-
-                        <!-- Decimals -->
                         <div class="mb-4">
                             <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
+                                class="block text-sm font-medium text-slate-700 mb-1.5"
                                 >Decimals
                                 <span class="text-red-500">*</span></label
                             >
@@ -233,14 +313,12 @@
                                 min="0"
                                 max="18"
                                 placeholder="18"
-                                class="w-full px-4 py-2 border rounded-lg"
+                                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                             />
                         </div>
-
-                        <!-- Logo Upload -->
-                        <div class="mb-4">
+                        <div class="mb-5">
                             <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
+                                class="block text-sm font-medium text-slate-700 mb-1.5"
                                 >Logo (PNG, 200x200, transparent)
                                 <span class="text-red-500">*</span></label
                             >
@@ -248,12 +326,12 @@
                                 type="file"
                                 id="formLogo"
                                 accept="image/png"
-                                class="w-full px-4 py-2 border rounded-lg"
+                                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm file:mr-3 file:px-3 file:py-1 file:rounded-full file:border-0 file:bg-slate-100 file:text-sm"
                             />
                             <div id="logoPreview" class="mt-2 hidden">
                                 <img
                                     id="logoPreviewImg"
-                                    class="logo-preview border rounded"
+                                    class="logo-preview border border-slate-200 rounded-xl ring-1 ring-slate-100"
                                 />
                             </div>
                             <p
@@ -261,129 +339,129 @@
                                 class="text-red-500 text-sm mt-1 hidden"
                             ></p>
                         </div>
-
-                        <!-- Social Links -->
-                        <h3 class="text-sm font-medium text-gray-700 mb-2">
-                            Social Links (optional)
-                        </h3>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >Website</label
-                            >
-                            <input
-                                type="url"
-                                id="formWebsite"
-                                placeholder="https://..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
+                        <div
+                            class="rounded-xl bg-slate-50 border border-slate-100 p-4 mb-6"
+                        >
+                            <h3 class="text-sm font-medium text-slate-700 mb-3">
+                                Social Links
+                                <span class="text-slate-400 font-normal"
+                                    >(optional)</span
+                                >
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >Website</label
+                                    ><input
+                                        type="url"
+                                        id="formWebsite"
+                                        placeholder="https://..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >Twitter/X</label
+                                    ><input
+                                        type="url"
+                                        id="formX"
+                                        placeholder="https://x.com/..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >Telegram</label
+                                    ><input
+                                        type="url"
+                                        id="formTelegram"
+                                        placeholder="https://t.me/..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >Discord</label
+                                    ><input
+                                        type="url"
+                                        id="formDiscord"
+                                        placeholder="https://discord.gg/..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >Reddit</label
+                                    ><input
+                                        type="url"
+                                        id="formReddit"
+                                        placeholder="https://reddit.com/r/..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >Facebook</label
+                                    ><input
+                                        type="url"
+                                        id="formFacebook"
+                                        placeholder="https://facebook.com/..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs text-slate-500 mb-1"
+                                        >CoinGecko</label
+                                    ><input
+                                        type="url"
+                                        id="formCoingecko"
+                                        placeholder="https://www.coingecko.com/en/coins/..."
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
+                                    />
+                                </div>
+                            </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >Twitter/X</label
-                            >
-                            <input
-                                type="url"
-                                id="formX"
-                                placeholder="https://x.com/..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >Telegram</label
-                            >
-                            <input
-                                type="url"
-                                id="formTelegram"
-                                placeholder="https://t.me/..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >Discord</label
-                            >
-                            <input
-                                type="url"
-                                id="formDiscord"
-                                placeholder="https://discord.gg/..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >Reddit</label
-                            >
-                            <input
-                                type="url"
-                                id="formReddit"
-                                placeholder="https://reddit.com/r/..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >Facebook</label
-                            >
-                            <input
-                                type="url"
-                                id="formFacebook"
-                                placeholder="https://facebook.com/..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-xs text-gray-500 mb-1"
-                                >CoinGecko</label
-                            >
-                            <input
-                                type="url"
-                                id="formCoingecko"
-                                placeholder="https://www.coingecko.com/en/coins/..."
-                                class="w-full px-4 py-2 border rounded-lg"
-                            />
-                        </div>
-
-                        <!-- Submit Button -->
                         <button
                             type="submit"
                             id="submitBtn"
-                            class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="w-full bg-brand text-white py-3 rounded-xl font-medium hover:bg-brand-dark shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Submit for Review
                         </button>
-                        <p class="text-xs text-gray-500 mt-2 text-center">
+                        <p class="text-xs text-slate-500 mt-2 text-center">
                             You must be connected to GitHub to submit. A Pull
-                            Request will be created and validated automatically;
-                            the SaturnDEX team reviews before merge.
+                            Request will be created and validated automatically.
                         </p>
                     </form>
                 </div>
             </div>
         </main>
 
-        <!-- Token Detail Modal -->
+        <!-- Modal -->
         <div
             id="tokenModal"
-            class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden modal"
+            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden modal"
         >
             <div class="flex items-center justify-center min-h-screen p-4">
                 <div
                     id="modalPanel"
-                    class="bg-white rounded-lg max-w-lg w-full p-6"
+                    class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-100"
                 >
                     <div class="flex justify-between items-start mb-4">
-                        <h3 id="modalTitle" class="text-xl font-bold"></h3>
+                        <h3
+                            id="modalTitle"
+                            class="text-lg font-semibold tracking-tight"
+                        ></h3>
                         <button
                             id="modalCloseX"
-                            class="text-gray-400 hover:text-gray-600"
+                            class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
                         >
                             &times;
                         </button>
@@ -391,33 +469,34 @@
                     <div class="flex items-center gap-4 mb-4">
                         <img
                             id="modalLogo"
-                            class="w-16 h-16 rounded-full border"
+                            class="w-16 h-16 rounded-full border border-slate-200 ring-1 ring-slate-100 object-cover"
                         />
                         <div>
-                            <p id="modalSymbol" class="text-lg font-medium"></p>
+                            <p id="modalSymbol" class="font-medium"></p>
                             <p
                                 id="modalAddress"
-                                class="text-sm text-gray-500 font-mono break-all"
+                                class="text-xs text-slate-500 font-mono break-all"
                             ></p>
                             <p
                                 id="modalDecimals"
-                                class="text-sm text-gray-500"
+                                class="text-xs text-slate-500"
                             ></p>
                         </div>
                     </div>
-                    <div id="modalLinks" class="flex flex-wrap gap-2 mb-4">
-                        <!-- Links will be added here -->
-                    </div>
+                    <div
+                        id="modalLinks"
+                        class="flex flex-wrap gap-2 mb-4"
+                    ></div>
                     <div class="flex gap-2">
                         <button
                             id="editTokenBtn"
-                            class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200"
+                            class="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl hover:bg-slate-200 text-sm font-medium transition"
                         >
                             Edit Token
                         </button>
                         <button
                             id="modalClose"
-                            class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                            class="flex-1 bg-brand text-white py-2.5 rounded-xl hover:bg-brand-dark text-sm font-medium transition"
                         >
                             Close
                         </button>
@@ -426,14 +505,12 @@
             </div>
         </div>
 
-        <!-- Toast Notification -->
         <div
             id="toast"
-            class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50"
+            class="fixed bottom-4 right-4 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-lg hidden z-50 text-sm translate-y-2 transition-all"
         >
             <p id="toastMessage"></p>
         </div>
-
         <script src="js/app.js"></script>
     </body>
 </html>

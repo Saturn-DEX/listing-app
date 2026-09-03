@@ -89,11 +89,18 @@ function showTab(tab) {
     const tabSubmit = document.getElementById("tabSubmit");
     tabBrowse.classList.toggle("tab-active", tab === "browse");
     tabSubmit.classList.toggle("tab-active", tab === "submit");
-    // Keep inactive tabs visually consistent: gray text + hover, active tabs blue (via .tab-active)
-    tabBrowse.classList.toggle("text-gray-500", tab !== "browse");
-    tabBrowse.classList.toggle("hover:text-gray-800", tab !== "browse");
-    tabSubmit.classList.toggle("text-gray-500", tab !== "submit");
-    tabSubmit.classList.toggle("hover:text-gray-800", tab !== "submit");
+    // Inactive tabs: unified slate palette (matches staged design). Also remove legacy gray
+    // so active tab never keeps a grey utility that would fight .tab-active even with !important.
+    const isBrowse = tab === "browse";
+    tabBrowse.classList.toggle("text-slate-400", !isBrowse);
+    tabBrowse.classList.toggle("hover:text-slate-600", !isBrowse);
+    tabSubmit.classList.toggle("text-slate-400", isBrowse);
+    tabSubmit.classList.toggle("hover:text-slate-600", isBrowse);
+    // Defensive cleanup: remove any legacy gray classes and stale slate on the active tab
+    tabBrowse.classList.remove("text-gray-500", "hover:text-gray-800");
+    tabSubmit.classList.remove("text-gray-500", "hover:text-gray-800");
+    if (isBrowse) tabBrowse.classList.remove("text-slate-400");
+    else tabSubmit.classList.remove("text-slate-400");
 }
 
 // ---------- GitHub API helpers ----------
@@ -290,8 +297,8 @@ function renderPagination(total, page) {
 
 function pageBtnClass(active) {
     return active
-        ? "w-8 h-8 rounded-lg text-sm font-medium bg-blue-600 text-white cursor-default"
-        : "w-8 h-8 rounded-lg text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed";
+        ? "w-8 h-8 rounded-full text-sm font-medium bg-brand text-white cursor-default shadow-sm"
+        : "w-8 h-8 rounded-full text-sm text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition";
 }
 
 function goToPage(page) {
@@ -307,7 +314,7 @@ function goToPage(page) {
 function createTokenCard(token) {
     const card = document.createElement("div");
     card.className =
-        "bg-white rounded-lg shadow p-4 cursor-pointer token-card transition-transform hover:shadow-md";
+        "bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-pointer token-card hover:shadow-card hover:border-slate-200";
     card.onclick = () => openTokenModal(token);
 
     const fallbackAvatar = (size) =>
@@ -321,7 +328,8 @@ function createTokenCard(token) {
     const img = document.createElement("img");
     img.src = logoUrl;
     img.alt = token.name || token.symbol || "Token";
-    img.className = "w-12 h-12 rounded-full border";
+    img.className =
+        "w-12 h-12 rounded-full border border-slate-200 ring-1 ring-slate-100 object-cover bg-white";
     img.onerror = () => {
         img.onerror = null;
         img.src = fallbackAvatar(48);
@@ -334,21 +342,21 @@ function createTokenCard(token) {
     nameRow.className = "flex items-center gap-2";
 
     const h3 = document.createElement("h3");
-    h3.className = "font-medium text-gray-800 truncate";
+    h3.className = "font-semibold text-slate-800 truncate text-sm";
     h3.textContent = token.name || "Unknown";
 
     const badge = document.createElement("span");
     badge.className =
         token.chain === "ethereum"
-            ? "px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-            : "px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full";
+            ? "px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-medium rounded-full ring-1 ring-blue-200"
+            : "px-2 py-0.5 bg-violet-50 text-violet-700 text-[11px] font-medium rounded-full ring-1 ring-violet-200";
     badge.textContent = token.chain === "ethereum" ? "ETH" : "ETC";
 
     nameRow.appendChild(h3);
     nameRow.appendChild(badge);
 
     const symbol = document.createElement("p");
-    symbol.className = "text-sm text-gray-500";
+    symbol.className = "text-xs text-slate-500";
     symbol.textContent = token.symbol || "???";
 
     info.appendChild(nameRow);
@@ -358,7 +366,8 @@ function createTokenCard(token) {
     row.appendChild(info);
 
     const address = document.createElement("p");
-    address.className = "text-xs text-gray-400 mt-2 font-mono truncate";
+    address.className =
+        "text-[11px] text-slate-400 mt-2.5 font-mono truncate bg-slate-50 px-2 py-1 rounded-full border border-slate-100";
     address.textContent = token.address || "";
 
     card.appendChild(row);
@@ -414,13 +423,13 @@ function openTokenModal(token) {
     linksContainer.innerHTML = "";
 
     const socialLinks = [
-        { key: "website", label: "Website", icon: "🌐" },
-        { key: "x", label: "Twitter", icon: "𝕏" },
-        { key: "telegram", label: "Telegram", icon: "📱" },
-        { key: "discord", label: "Discord", icon: "💬" },
-        { key: "reddit", label: "Reddit", icon: "📰" },
-        { key: "facebook", label: "Facebook", icon: "📘" },
-        { key: "coingecko", label: "CoinGecko", icon: "🦎" },
+        { key: "website", label: "Website" },
+        { key: "x", label: "X" },
+        { key: "telegram", label: "Telegram" },
+        { key: "discord", label: "Discord" },
+        { key: "reddit", label: "Reddit" },
+        { key: "facebook", label: "Facebook" },
+        { key: "coingecko", label: "CoinGecko" },
     ];
 
     socialLinks.forEach((social) => {
@@ -430,8 +439,8 @@ function openTokenModal(token) {
             link.target = "_blank";
             link.rel = "noopener noreferrer";
             link.className =
-                "px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 flex items-center gap-1";
-            link.textContent = `${social.icon} ${social.label}`;
+                "px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-full text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition";
+            link.textContent = social.label;
             linksContainer.appendChild(link);
         }
     });
