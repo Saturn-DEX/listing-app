@@ -88,6 +88,31 @@
                 background-size: 200% 100%;
                 animation: shimmer 1.2s infinite;
             }
+            /* Inline submit button spinner: visible "processing" indicator that keeps
+               the button's shape and brand color while the PR request is in flight. */
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .spinner {
+                width: 1rem;
+                height: 1rem;
+                border: 2px solid rgba(255, 255, 255, 0.35);
+                border-top-color: #fff;
+                border-radius: 9999px;
+                animation: spin 0.7s linear infinite;
+                flex-shrink: 0;
+            }
+            /* During submission the button stays disabled (native double-submit guard)
+               but must NOT dim to disabled:opacity-50 — the request is running, not an error.
+               id+class specificity beats the Tailwind disabled utilities. */
+            #submitBtn.submit-loading,
+            #submitBtn.submit-loading:hover {
+                background-color: var(--brand);
+                opacity: 1;
+                cursor: progress;
+            }
         </style>
     </head>
     <body class="bg-[#f8fafc] min-h-screen antialiased text-slate-800">
@@ -186,9 +211,17 @@
                 </div>
 
                 <div class="flex items-center justify-between mb-4">
-                    <p id="tokenCount" class="text-sm text-slate-500">
-                        Loading tokens...
-                    </p>
+                    <div class="flex items-center gap-3">
+                        <p id="tokenCount" class="text-sm text-slate-500">
+                            Loading tokens...
+                        </p>
+                        <button
+                            id="refreshTokens"
+                            class="hidden text-xs font-medium text-brand hover:text-brand-dark transition"
+                        >
+                            Refresh
+                        </button>
+                    </div>
                     <div id="pagination" class="flex items-center gap-1"></div>
                 </div>
 
@@ -431,9 +464,15 @@
                         <button
                             type="submit"
                             id="submitBtn"
-                            class="w-full bg-brand text-white py-3 rounded-xl font-medium hover:bg-brand-dark shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="w-full bg-brand text-white py-3 rounded-xl font-medium hover:bg-brand-dark shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                         >
-                            Submit for Review
+                            <span
+                                id="submitSpinner"
+                                class="spinner hidden"
+                                role="status"
+                                aria-label="Submitting for review"
+                            ></span>
+                            <span id="submitLabel">Submit for Review</span>
                         </button>
                         <p class="text-xs text-slate-500 mt-2 text-center">
                             You must be connected to GitHub to submit. A Pull
